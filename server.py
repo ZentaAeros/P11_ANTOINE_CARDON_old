@@ -33,7 +33,7 @@ def showSummary():
         if request.form['email'] == '':
             flash('Veuillez entrer une adresse mail')
         else:
-            flash('Le compte avec l\'adresse mail saisie n\'existe pas.')
+            flash('Compte inexistant')
         return render_template('index.html'), 401
 
 
@@ -52,10 +52,23 @@ def book(competition,club):
 def purchasePlaces():
     competition = [c for c in competitions if c['name'] == request.form['competition']][0]
     club = [c for c in clubs if c['name'] == request.form['club']][0]
-    placesRequired = int(request.form['places'])
-    competition['numberOfPlaces'] = int(competition['numberOfPlaces'])-placesRequired
-    flash('Great-booking complete!')
-    return render_template('welcome.html', club=club, competitions=competitions)
+    try:
+        placesRequired = int(request.form['places'])
+
+        if placesRequired > 12:
+            flash('Vous ne pouvez pas réserver + de 12 places')
+            return render_template('booking.html',club=club,competition=competition)
+        elif int(club["points"]) < placesRequired:
+            flash("Solde de points insuffisant")
+            return render_template('booking.html',club=club,competition=competition)
+        else:
+            competition['numberOfPlaces'] = int(competition['numberOfPlaces'])-placesRequired
+            club["points"] = int(club["points"]) - placesRequired
+            flash('Great-booking complete!')
+            return render_template('welcome.html', club=club, competitions=competitions)
+
+    except ValueError:
+        flash(f"Veuillez entrer une valeur entre 0 et {competition['numberOfPlaces']}")
 
 
 # TODO: Add route for points display
