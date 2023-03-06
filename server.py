@@ -1,6 +1,7 @@
 import json
 from flask import Flask,render_template,request,redirect,flash,url_for
-
+from datetime import datetime
+from utils import sort_competition_by_date
 
 def loadClubs():
     with open('clubs.json') as c:
@@ -20,6 +21,8 @@ app.secret_key = 'something_special'
 competitions = loadCompetitions()
 clubs = loadClubs()
 
+compet = sort_competition_by_date(competitions)
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -28,7 +31,7 @@ def index():
 def showSummary():
     try:
         club = [club for club in clubs if club['email'] == request.form['email']][0]
-        return render_template('welcome.html',club=club,competitions=competitions)
+        return render_template('welcome.html',club=club,past_competitions=compet['past_compet'], actually_competitions=compet['actually_compet'])
     except IndexError:
         if request.form['email'] == '':
             flash('Veuillez entrer une adresse mail')
@@ -39,14 +42,21 @@ def showSummary():
 
 @app.route('/book/<competition>/<club>')
 def book(competition,club):
-    foundClub = [c for c in clubs if c['name'] == club][0]
-    foundCompetition = [c for c in competitions if c['name'] == competition][0]
-    if foundClub and foundCompetition:
-        return render_template('booking.html',club=foundClub,competition=foundCompetition)
-    else:
-        flash("Something went wrong-please try again")
-        return render_template('welcome.html', club=club, competitions=competitions)
+    try:
+        foundClub = [c for c in clubs if c['name'] == club][0]
+        foundCompetition = [c for c in competitions if c['name'] == competition][0]
+        if foundCompetition['date'] < datetime.now().strftime("%Y-%m-%d %H:%M:%S"):
+            flash("Cette compétition est déjà passée")
+            return render_template('welcome.html',club=club,past_competitions=compet['past_compet'], actually_competitions=compet['actually_compet'])
 
+        if foundClub and foundCompetition:
+            return render_template('booking.html',club=foundClub,competition=foundCompetition)
+        else:
+            flash("Something went wrong-please try again")
+            return render_template('welcome.html', club=club, competitions=competitions)
+    except IndexError:
+        flash("Compétition inexistante.")
+        return render_template('welcome.html',club=club,past_competitions=compet['past_compet'], actually_competitions=compet['actually_compet'])
 
 @app.route('/purchasePlaces',methods=['POST'])
 def purchasePlaces():
